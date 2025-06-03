@@ -1,33 +1,100 @@
-# LLM-Powered 3D Object Generator
+# Project Title
 
-This project aims to generate 3D objects (as .glb files) from text prompts using an LLM to create Three.js scripts.
+## Overview
 
-## Project Outline
+This application generates 3D objects using AI. It can be controlled via a Command Line Interface (CLI) or an Express.js API. The core functionality involves prompting an LLM (Claude Opus 4 via Anthropic API) to generate a Three.js script, which is then used to create a 3D object headlessly. This object is subsequently transformed into a GLB format. 
 
-1.  **CLI Tool for Prompts:**
-    *   A command-line interface to accept user text prompts.
-2.  **LLM Interaction:**
-    *   The CLI tool will send the prompt to an LLM provider.
-    *   The LLM will be instructed to generate a JavaScript script that uses Three.js primitives to construct 3D objects based on the prompt.
-3.  **Script Execution & Object Generation:**
-    *   A Node.js environment will execute the LLM-generated Three.js script.
-    *   This script will build the 3D objects in memory. No rendering to screen is required at this stage.
-4.  **Export to GLB:**
-    *   The in-memory Three.js scene/objects will be exported as a `.glb` file.
-    *   Exported files will be saved to the `glb/` directory.
-5.  **Three.js Client:**
-    *   A simple web-based Three.js client to load and view the generated `.glb` files from the `glb/` directory.
+## Features
 
-## Directory Structure
+- **Dual Interface**: Usable as a CLI tool or an Express.js API.
+- **AI-Powered 3D Generation**: Leverages Claude Opus 4 to generate Three.js scripts for 3D objects based on user prompts.
+- **Headless Rendering**: Creates 3D objects without requiring a graphical interface.
+- **GLB Export**: Transforms generated objects into the widely-compatible GLB format.
+- **Flexible Output**: Saves GLB files locally when using the CLI, or returns them via HTTP response when using the API.
 
+## Tech Stack
+
+- **LLM**: Claude Opus 4 (Anthropic API)
+- **3D Graphics**: Three.js
+- **Backend (API)**: Express.js
+- **CLI**: yargs
+- **Language**: JavaScript (ES Modules)
+
+## Prerequisites
+
+- Node.js (version 18.0.0 or higher, as specified in `package.json`)
+- npm (comes with Node.js)
+- An Anthropic API Key
+
+## Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone <your-repository-url>
+   cd <repository-name>
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   Create a `.env` file in the root of the project and add your Anthropic API key:
+   ```
+   ANTHROPIC_API_KEY=your_api_key_here
+   ```
+
+## Usage
+
+### CLI
+
+To generate a 3D object using the CLI:
+
+```bash
+node src/index.js --prompt "Your detailed prompt for the 3D object" [--output path/to/your/object.glb]
 ```
-.
-├── cli/                # CLI tool for prompt input and LLM interaction
-├── client/             # Three.js client for viewing GLB files
-├── glb/                # Output directory for exported .glb files
-├── scripts/            # To store LLM-generated scripts or helper scripts
-├── src/                # (Optional) Shared utilities or core logic
-├── .gitignore
-├── package.json        # Project-level scripts and workspace config (if any)
-└── README.md
-``` 
+
+- `--prompt`: (Required) A textual description of the 3D object you want to generate.
+- `--output`: (Optional) The file path where the generated GLB object will be saved. Defaults to `output.glb` in the project root or a predefined directory.
+
+*(Please adjust the exact command and options based on your `yargs` setup in `src/index.js`)*
+
+### API
+
+1. **Start the API server:**
+   ```bash
+   npm run api
+   ```
+   The server will typically start on `http://localhost:3000` (or as configured).
+
+2. **Send a request to the generation endpoint:**
+
+   **Endpoint:** `POST /generate-3d`
+
+   **Request Body:** (JSON)
+   ```json
+   {
+     "prompt": "Your detailed prompt for the 3D object"
+   }
+   ```
+
+   **Success Response:** (200 OK)
+   - Content-Type: `model/gltf-binary`
+   - Body: The GLB file data.
+
+   **Error Response:** (e.g., 400 Bad Request, 500 Internal Server Error)
+   - Content-Type: `application/json`
+   - Body:
+     ```json
+     {
+       "error": "Error message describing the issue"
+     }
+     ```
+
+*(Please adjust the endpoint, port, and request/response structure based on your Express API setup in `src/api.js`)*
+
+## Environment Variables
+
+- `ANTHROPIC_API_KEY`: Your API key for the Anthropic (Claude) service. This is required for the LLM to function.
+- `PORT`: (Optional) The port on which the Express API server will listen. Defaults to `3000` if not set. *(Adjust if your default is different or if it's configurable via `.env`)*
