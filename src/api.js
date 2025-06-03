@@ -1,6 +1,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
 
 // Determine __dirname in ES module scope early for .env loading
 const __filenameES = fileURLToPath(import.meta.url);
@@ -32,6 +33,29 @@ const __filename = __filenameES;
 const __dirname = __dirnameES;
 
 const app = express();
+
+// Configure Helmet with custom CSP
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'script-src': [
+          "'self'",
+          "'sha256-tTZ5O9wshl11CSlNgJJuNUnFjr7jT4WpdewXaLALVec='", // Hash for importmap
+          "'sha256-sNN9FkwOz6soEhkd9E5gOG6G0cVbCL0WmViCYi8Znb0='", // Hash for main module script
+          "https://cdn.jsdelivr.net" // Allow scripts from Three.js CDN
+        ],
+        'worker-src': ["'self'", "blob:", "https://cdn.jsdelivr.net"], // Allow workers from self, blobs, and CDN
+        'img-src': ["'self'", "data:"], // Allow images from self and data URIs
+        'connect-src': ["'self'", "blob:"], // Allow connections to self and blob URIs
+        // Add other directives as needed, for example:
+        // 'style-src': ["'self'", "'unsafe-inline'"], // If you have inline styles you can't easily move
+      },
+    },
+  })
+);
+
 const port = process.env.PORT || 3000;
 
 // Serve static files from the 'public' directory
@@ -163,6 +187,11 @@ app.post('/refine-scene', async (req, res) => {
             res.status(500).send({ error: 'Failed to refine 3D scene.' });
         }
     }
+});
+
+// Health check endpoint
+app.get('/healthz', (req, res) => {
+  res.status(200).send('OK');
 });
 
 app.listen(port, () => {
