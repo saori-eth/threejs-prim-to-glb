@@ -1,0 +1,24 @@
+{
+  "name": "llm-3d-models-project",
+  "version": "1.0.0",
+  "description": "Generates 3D models from text prompts using LLMs and Three.js.",
+  "private": true,
+  "scripts": {
+    "readme": "echo \"See README.md for project details.\"",
+    "cli": "cd cli && node index.js",
+    "cli:dev": "cd cli && node --watch index.js"
+  },
+  "workspaces": [
+    "cli"
+  ],
+  "keywords": [
+    "llm",
+    "three.js",
+    "3d",
+    "glb",
+    "procedural generation",
+    "ai"
+  ],
+  "author": "",
+  "license": "ISC"
+} 
