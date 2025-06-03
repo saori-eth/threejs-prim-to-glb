@@ -12,7 +12,15 @@ import fs from 'fs';
 function generateSceneFromScript(scriptString, THREE_Reference) {
     console.log("[Script Execution] Attempting to generate scene from script.");
     try {
-        const sceneGeneratorFunction = new Function('THREE', scriptString);
+        // Un-escape characters for the Function constructor
+        // The scriptString comes from a JSON value, so \n is literally '\' and 'n'.
+        let processedScriptString = scriptString.replace(/\\n/g, '\n')
+                                              .replace(/\\r/g, '\r')
+                                              .replace(/\\t/g, '\t')
+                                              .replace(/\\\"/g, '\"') // For escaped double quotes
+                                              .replace(/\\\'/g, '\'');  // For escaped single quotes
+
+        const sceneGeneratorFunction = new Function('THREE', processedScriptString);
         const scene = sceneGeneratorFunction(THREE_Reference);
 
         if (!(scene instanceof THREE_Reference.Scene)) {

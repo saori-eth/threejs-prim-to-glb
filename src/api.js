@@ -20,7 +20,7 @@ console.log('[API DEBUG] ANTHROPIC_API_KEY after dotenv.config() in API:', proce
 import express from 'express';
 import fs from 'fs';
 import * as THREE from 'three';
-import { getScriptFromLLM, AVAILABLE_MODELS, DEFAULT_MODEL_ID } from './llm-utils.js';
+import { getScriptFromLLM, AVAILABLE_MODELS, DEFAULT_MODEL_ID, getRefinedScriptFromLLM } from './llm-utils.js';
 import { generateSceneFromScript, exportSceneToGLB } from './three-utils.js';
 import { initializeFileReaderShim } from './utils/fileReaderShim.js';
 
@@ -66,12 +66,17 @@ app.post('/generate-scene', async (req, res) => {
         const fullOutputPath = path.join(tempGlbDir, outputFileName);
 
         console.log(`LLM suggested filename (sanitized base): ${sanitizedFilenameBase}`);
+        console.log(`LLM script content (first 100 chars): ${llmResponse.script.substring(0,100)}`);
         console.log(`Temporary GLB will be saved to: ${fullOutputPath}`);
 
         const scene = generateSceneFromScript(llmResponse.script, THREE);
         await exportSceneToGLB(scene, fullOutputPath);
 
         console.log(`GLB generated successfully at: ${fullOutputPath}`);
+
+        // Set headers for the script and original filename
+        res.setHeader('X-Generated-Script', encodeURIComponent(llmResponse.script));
+        res.setHeader('X-Generated-Filename', encodeURIComponent(llmResponse.filename));
 
         // Send the file back and then delete it
         res.sendFile(fullOutputPath, (err) => {
@@ -98,6 +103,64 @@ app.post('/generate-scene', async (req, res) => {
         console.error("Failed in API generation pipeline:", error);
         if (!res.headersSent) {
             res.status(500).send({ error: 'Failed to generate 3D scene.' });
+        }
+    }
+});
+
+app.post('/refine-scene', async (req, res) => {
+    const { originalScript, refinementPrompt, modelId: requestedModelId } = req.body;
+    const modelId = AVAILABLE_MODELS.hasOwnProperty(requestedModelId) ? requestedModelId : DEFAULT_MODEL_ID;
+
+    if (!originalScript || !refinementPrompt) {
+        return res.status(400).send({ error: 'Original script and refinement prompt are required' });
+    }
+
+    console.log(`API Refinement Request - Model: ${modelId}`);
+    // Avoid logging the full originalScript if it's very long
+    console.log(`API Refinement Request - Refinement prompt: ${refinementPrompt}`);
+
+    try {
+        const llmResponse = await getRefinedScriptFromLLM(originalScript, refinementPrompt, modelId);
+
+        const uniqueId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+        const sanitizedFilenameBase = (llmResponse.filename || 'scene_refined').toLowerCase().replace(/[^a-z0-9_\s-]/g, '').replace(/\s+/g, '_');
+        const outputFileName = `${sanitizedFilenameBase}-${uniqueId}.glb`;
+        const fullOutputPath = path.join(tempGlbDir, outputFileName);
+
+        console.log(`LLM suggested filename for refinement (sanitized base): ${sanitizedFilenameBase}`);
+        console.log(`Refined LLM script content (first 100 chars): ${llmResponse.script.substring(0,100)}`);
+        console.log(`Temporary refined GLB will be saved to: ${fullOutputPath}`);
+
+        const scene = generateSceneFromScript(llmResponse.script, THREE);
+        await exportSceneToGLB(scene, fullOutputPath);
+
+        console.log(`Refined GLB generated successfully at: ${fullOutputPath}`);
+
+        res.setHeader('X-Generated-Script', encodeURIComponent(llmResponse.script));
+        res.setHeader('X-Generated-Filename', encodeURIComponent(llmResponse.filename));
+
+        res.sendFile(fullOutputPath, (err) => {
+            if (err) {
+                console.error('Error sending refined file:', err);
+                if (!res.headersSent) {
+                    res.status(500).send({ error: 'Failed to send refined GLB file.' });
+                }
+            } else {
+                console.log('Refined file sent successfully. Deleting temporary file.');
+            }
+            fs.unlink(fullOutputPath, (unlinkErr) => {
+                if (unlinkErr) {
+                    console.error('Error deleting temporary refined file:', unlinkErr);
+                } else {
+                    console.log('Temporary refined file deleted successfully.');
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error("Failed in API refinement pipeline:", error);
+        if (!res.headersSent) {
+            res.status(500).send({ error: 'Failed to refine 3D scene.' });
         }
     }
 });

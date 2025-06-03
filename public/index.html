@@ -24,24 +24,32 @@
             padding: 25px; 
             border-radius: 12px; /* Slightly more rounded */
             box-shadow: 0 8px 32px rgba(0,0,0,0.37); /* Softer, more modern shadow */
-            margin-top: 0; 
+            margin-top: 30px; /* Increased padding from viewer */
             border: 1px solid rgba(255, 255, 255, 0.18); /* Subtle border */
         }
         h1 { 
             text-align: center; 
             color: #f5f5f5; /* Brighter white for heading */
             margin-top: 25px; 
-            margin-bottom: 15px;
-            font-weight: 300; /* Lighter font weight for modern feel */
+            margin-bottom: 25px; /* Increased margin bottom */
+            font-weight: 500; /* Bolder for more interest */
+            letter-spacing: 1px; /* Added letter spacing */
+            font-size: 2.2em; /* Slightly larger */
+            text-shadow: 0 0 8px rgba(255,255,255,0.15); /* Subtle glow */
         }
         label { 
             display: block; 
             margin-bottom: 10px; /* Increased margin */
             font-weight: 500; /* Medium font weight */
             color: #c7c7c7; /* Lighter gray for labels */
+            text-align: center; /* Center labels */
         }
         input[type="text"] { 
+            display: block; /* To allow margin auto */
             width: calc(100% - 24px); 
+            max-width: 400px; /* Max width for text input */
+            margin-left: auto;
+            margin-right: auto;
             padding: 12px; 
             margin-bottom: 25px; 
             background-color: rgba(0,0,0,0.3); /* Darker input background */
@@ -53,41 +61,48 @@
         input[type="text"]::placeholder {
             color: #888888; /* Placeholder text color */
         }
+        
+        select#modelSelect { /* Style for the model selector */
+            display: block;
+            max-width: 350px; /* Specific width for selector */
+            padding: 12px; 
+            margin: 0 auto 25px auto; /* Centering and bottom margin */
+            background-color: rgba(0,0,0,0.3); /* Darker select background */
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 6px; 
+            color: #e0e0e0; 
+            font-size: 16px;
+        }
+
         button {
             display: block; 
-            width: 100%; 
-            padding: 12px 18px; /* Slightly more padding */
-            background-color: #007aff; /* Modern blue */
-            color: white;
+            width: auto; /* Auto width */
+            min-width: 180px; /* Minimum width for buttons */
+            padding: 12px 25px; /* Adjusted padding */
+            margin: 0 auto 15px auto; /* Centering and bottom margin */
+            background-color: #555555; /* Grayscale button */
+            color: #f0f0f0; /* Light gray text */
             border: none; 
             border-radius: 6px; /* Softer corners */
             cursor: pointer; 
-            font-size: 17px; /* Slightly larger font */
+            font-size: 16px; /* Adjusted font size */
             font-weight: 500;
             transition: background-color 0.2s ease, transform 0.1s ease;
         }
         button:hover { 
-            background-color: #0056b3; /* Darker blue on hover */
+            background-color: #777777; /* Lighter gray on hover */
             transform: translateY(-1px); /* Subtle lift effect */
         }
         button:disabled { 
-            background-color: #444444; /* Darker disabled state */
+            background-color: #333333; /* Darker disabled state */
             color: #888888;
             cursor: not-allowed; 
             transform: none;
         }
-        /* Style for the new download button */
-        #downloadButton {
-            margin-top: 10px; /* Add some space above the download button */
-            background-color: #28a745; /* Green color for download */
-        }
-        #downloadButton:hover {
-            background-color: #218838; /* Darker green on hover */
-        }
-        #downloadButton:disabled {
-             background-color: #444444; /* Consistent disabled style */
-            color: #888888;
-        }
+        /* Specific button IDs no longer need separate color styles if all are grayscale */
+        /* #downloadButton styling is now covered by general button rules */
+        /* #refineButton styling is now covered by general button rules */
+
         #viewer-container { 
             width: 100%; 
             max-width: 800px; 
@@ -126,7 +141,7 @@
     </script>
 </head>
 <body>
-    <h1>3D Scene Generator (Three.js)</h1>
+    <h1>Three.js GLB Generator</h1>
     <div id="viewer-container">
         <canvas id="threejs-canvas"></canvas>
     </div>
@@ -137,7 +152,7 @@
         </div>
         <div>
             <label for="modelSelect">Select Model:</label>
-            <select id="modelSelect" style="width: 100%; padding: 12px; margin-bottom: 20px; background-color: #000000; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; color: #FFFFFF; font-size: 16px;">
+            <select id="modelSelect">
                 <option value="claude-opus-4-20250514">Claude Opus 4 (20250514)</option>
                 <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (20250514)</option>
                 <option value="claude-3-7-sonnet-20250219">Claude Sonnet 3.7 (20250219)</option>
@@ -152,6 +167,11 @@
         <button id="generateButton">Generate Scene</button>
         <button id="downloadButton">Download GLB</button>
         <div id="status"></div>
+    </div>
+    <div id="refinement-controls-container" style="margin-top: 25px; width: 100%; max-width: 800px; background: rgba(30, 30, 30, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.37); border: 1px solid rgba(255, 255, 255, 0.18); text-align: center;">
+        <label for="refinementPromptInput" style="display: block; margin-bottom: 10px; font-weight: 500; color: #c7c7c7;">Refine the current scene:</label>
+        <input type="text" id="refinementPromptInput" placeholder="e.g., 'make the cube green', 'add a light from above'" style="width: calc(100% - 24px); max-width: 400px; padding: 12px; margin-bottom: 15px; background-color: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; color: #e0e0e0; font-size: 16px; margin-left: auto; margin-right: auto; display:block;">
+        <button id="refineButton">Refine Scene</button>
     </div>
 
     <script type="module">
@@ -168,11 +188,15 @@
         const viewerContainer = document.getElementById('viewer-container');
         const downloadButton = document.getElementById('downloadButton');
         const modelSelect = document.getElementById('modelSelect');
+        const refinementPromptInput = document.getElementById('refinementPromptInput');
+        const refineButton = document.getElementById('refineButton');
 
         let scene, camera, renderer, controls, loader;
         let currentModel = null;
         let currentObjectUrl = null;
         let lastSuccessfulPrompt = "scene"; // Default filename prefix
+        let currentThreeJsScript = null; // To store the script from the LLM
+        let currentFilenameBase = "scene"; // To store the filename base from LLM
 
         function initThree() {
             console.log('initThree() called');
@@ -218,6 +242,10 @@
 
 
             loader = new GLTFLoader();
+
+            // Initial button states
+            downloadButton.disabled = true;
+            refineButton.disabled = true;
 
             window.addEventListener('resize', onWindowResize);
             animate();
@@ -281,11 +309,13 @@
                 statusDiv.textContent = 'Model loaded successfully with Three.js!';
                 statusDiv.style.color = 'green';
                 downloadButton.disabled = false; // Enable download button
+                refineButton.disabled = !currentThreeJsScript; // Enable refine if script exists
             }, undefined, (error) => {
                 console.error('An error happened during GLB loading:', error);
                 statusDiv.textContent = 'Failed to load GLB model with Three.js.';
                 statusDiv.style.color = 'red';
                 downloadButton.disabled = true; // Disable on error
+                refineButton.disabled = true; // Disable on error
             });
         }
         
@@ -354,14 +384,36 @@
                 const blob = await response.blob();
                 currentObjectUrl = URL.createObjectURL(blob);
                 loadModel(currentObjectUrl);
-                lastSuccessfulPrompt = prompt.replace(/[^a-z0-9_]/gi, '_').substring(0, 50) || "scene"; // Sanitize prompt for filename
+                
+                const scriptHeader = response.headers.get('X-Generated-Script');
+                const filenameHeader = response.headers.get('X-Generated-Filename');
+
+                if (scriptHeader) {
+                    currentThreeJsScript = decodeURIComponent(scriptHeader);
+                    console.log("Received and stored script from LLM.");
+                    // Optionally: display or allow viewing of the script
+                } else {
+                    console.warn("X-Generated-Script header not found.");
+                    currentThreeJsScript = null;
+                }
+
+                if (filenameHeader) {
+                    currentFilenameBase = decodeURIComponent(filenameHeader);
+                    console.log("Received filename base from LLM:", currentFilenameBase);
+                } else {
+                    currentFilenameBase = prompt.replace(/[^a-z0-9_]/gi, '_').substring(0, 50) || "scene"; // Fallback
+                    console.warn("X-Generated-Filename header not found, using sanitized prompt as fallback for filename base.");
+                }
+
                 downloadButton.disabled = false; // Enable download button
+                refineButton.disabled = !currentThreeJsScript; // Enable refine button if script is available
 
             } catch (error) {
                 console.error('Error generating or loading scene:', error);
                 statusDiv.textContent = `Failed to load model: ${error.message}`;
                 statusDiv.style.color = 'red';
                 downloadButton.disabled = true; // Ensure it's disabled on error
+                refineButton.disabled = true; // Ensure it's disabled on error
             } finally {
                 generateButton.disabled = false;
                 generateButton.textContent = 'Generate Scene';
@@ -372,7 +424,7 @@
             if (currentObjectUrl) {
                 const a = document.createElement('a');
                 a.href = currentObjectUrl;
-                a.download = `${lastSuccessfulPrompt}.glb`; // Use sanitized prompt for filename
+                a.download = `${currentFilenameBase}.glb`; // Use filename base from LLM
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -381,6 +433,112 @@
                 console.warn('No model URL available for download.');
                 statusDiv.textContent = 'No model available to download.';
                 statusDiv.style.color = 'orange';
+            }
+        });
+
+        refineButton.addEventListener('click', async () => {
+            console.log('Refine Scene button clicked. Button disabled state:', refineButton.disabled);
+            console.log('Current Three.js script available:', currentThreeJsScript ? 'Yes, length: ' + currentThreeJsScript.length : 'No');
+            
+            const refinementPrompt = refinementPromptInput.value.trim();
+            const selectedModelId = modelSelect.value;
+            console.log('Refinement prompt:', refinementPrompt);
+
+
+            if (!currentThreeJsScript) {
+                statusDiv.textContent = 'No scene script available to refine. Please generate a scene first.';
+                statusDiv.style.color = 'orange';
+                console.warn('Refinement aborted: currentThreeJsScript is not available.');
+                return;
+            }
+
+            if (!refinementPrompt) {
+                statusDiv.textContent = 'Please enter a refinement prompt.';
+                statusDiv.style.color = 'red';
+                console.warn('Refinement aborted: refinementPrompt is empty.');
+                return;
+            }
+
+            refineButton.disabled = true;
+            refineButton.textContent = 'Refining...';
+            generateButton.disabled = true; // Also disable generate during refinement
+            statusDiv.textContent = 'Sending refinement request to API...';
+            statusDiv.style.color = 'inherit';
+
+            if (currentObjectUrl) {
+                URL.revokeObjectURL(currentObjectUrl);
+                currentObjectUrl = null;
+            }
+             if (currentModel) { // Clear previous model
+                scene.remove(currentModel);
+            }
+            renderer.render(scene, camera);
+
+
+            try {
+                const payload = {
+                    originalScript: currentThreeJsScript,
+                    refinementPrompt: refinementPrompt,
+                    modelId: selectedModelId
+                };
+                console.log('Attempting to fetch /refine-scene with model:', selectedModelId, 'Payload:', payload);
+                
+                const response = await fetch('/refine-scene', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                statusDiv.textContent = 'Receiving refined model from API...';
+
+                if (!response.ok) {
+                    let errorMsg = `Error: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } catch (e) { /* If response is not JSON, use the status text */ }
+                    console.error('Refine API response not OK:', errorMsg, 'Status:', response.status); // Enhanced log
+                    throw new Error(errorMsg);
+                }
+                
+                const scriptHeader = response.headers.get('X-Generated-Script');
+                const filenameHeader = response.headers.get('X-Generated-Filename');
+
+                if (scriptHeader) {
+                    currentThreeJsScript = decodeURIComponent(scriptHeader);
+                    console.log("Received and stored updated script from LLM after refinement.");
+                } else {
+                    console.warn("X-Generated-Script header not found after refinement.");
+                    // Keep the old script? Or nullify? For now, let's nullify as a precaution.
+                    currentThreeJsScript = null; 
+                }
+
+                if (filenameHeader) {
+                    currentFilenameBase = decodeURIComponent(filenameHeader);
+                    console.log("Received updated filename base from LLM after refinement:", currentFilenameBase);
+                } else {
+                     // Fallback for filename if header is missing
+                    currentFilenameBase = (refinementPrompt.substring(0,20) + "_refined").replace(/[^a-z0-9_]/gi, '_') || "scene_refined";
+                    console.warn("X-Generated-Filename header not found after refinement, using sanitized prompt as fallback.");
+                }
+
+                const blob = await response.blob();
+                currentObjectUrl = URL.createObjectURL(blob);
+                loadModel(currentObjectUrl); 
+                // loadModel will re-enable downloadButton and refineButton (if script is still valid)
+
+            } catch (error) {
+                console.error('Error refining scene:', error);
+                statusDiv.textContent = `Failed to refine model: ${error.message}`;
+                statusDiv.style.color = 'red';
+                downloadButton.disabled = true; 
+                refineButton.disabled = true; // Keep disabled on error or if script became invalid
+            } finally {
+                refineButton.disabled = !currentThreeJsScript; // Re-evaluate based on script presence
+                refineButton.textContent = 'Refine Scene';
+                generateButton.disabled = false;
             }
         });
 
