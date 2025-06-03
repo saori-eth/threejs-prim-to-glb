@@ -11,6 +11,7 @@ This application generates 3D objects using AI. It can be controlled via a Comma
 - **Headless Rendering**: Creates 3D objects without requiring a graphical interface.
 - **GLB Export**: Transforms generated objects into the widely-compatible GLB format.
 - **Flexible Output**: Saves GLB files locally when using the CLI, or returns them via HTTP response when using the API.
+- **Web Interface**: Provides a user-friendly web page (`public/index.html`) for easier prompting, real-time 3D object viewing, downloading, and selection of different Anthropic models when using the API.
 
 ## Tech Stack
 
@@ -66,9 +67,9 @@ node src/index.js --prompt "Your detailed prompt for the 3D object" [--output pa
    ```bash
    npm run api
    ```
-   The server will typically start on `http://localhost:3000` (or as configured).
+   The server will typically start on `http://localhost:3000` (or as configured). Once the server is running, you can also access a helper web interface by navigating to `http://localhost:3000/` in your browser. This interface allows for easier prompting, viewing of the generated 3D model, downloading the GLB file, and selecting different Anthropic models.
 
-2. **Send a request to the generation endpoint:**
+2. **Send a request to the generation endpoint (or use the web interface):**
 
    **Endpoint:** `POST /generate-3d`
 

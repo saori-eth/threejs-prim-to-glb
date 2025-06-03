@@ -1,15 +1,30 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+export const AVAILABLE_MODELS = {
+    "claude-opus-4-20250514": "Claude Opus 4 (20250514)",
+    "claude-sonnet-4-20250514": "Claude Sonnet 4 (20250514)",
+    "claude-3-7-sonnet-20250219": "Claude Sonnet 3.7 (20250219)",
+    "claude-3-5-haiku-20241022": "Claude Haiku 3.5 (20241022)", // Assuming specific date for clarity
+    "claude-3-5-sonnet-20241022": "Claude Sonnet 3.5 v2 (20241022)", // Assuming specific date for clarity
+    "claude-3-5-sonnet-20240620": "Claude Sonnet 3.5 (20240620)",
+    "claude-3-opus-20240229": "Claude Opus 3 (20240229)",
+    "claude-3-sonnet-20240229": "Claude Sonnet 3 (20240229)",
+    "claude-3-haiku-20240307": "Claude Haiku 3 (20240307)"
+};
+
+export const DEFAULT_MODEL_ID = "claude-3-5-sonnet-20240620";
+
 // Note: It's assumed that dotenv.config() has been called in the entry point of the application (e.g., cli/index.js)
 // to load ANTHROPIC_API_KEY into process.env.
 
 /**
  * Generates a Three.js script based on a prompt using the Anthropic API.
  * @param {string} userPrompt - The user's text prompt.
+ * @param {string} [modelId] - The ID of the Anthropic model to use. Defaults to DEFAULT_MODEL_ID.
  * @returns {Promise<{script: string, filename: string}>} A promise that resolves to an object containing the JavaScript code and a suggested filename.
  */
-export async function getScriptFromLLM(userPrompt) {
-    console.log(`[Anthropic Service] Received prompt: "${userPrompt}"`);
+export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
+    console.log(`[Anthropic Service] Received prompt: "${userPrompt}" for model: ${modelId}`);
 
     if (!process.env.ANTHROPIC_API_KEY) {
         console.error("[Anthropic Service] Error: ANTHROPIC_API_KEY environment variable is not set or not loaded.");
@@ -48,9 +63,9 @@ export async function getScriptFromLLM(userPrompt) {
     `;
 
     try {
-        console.log("[Anthropic Service] Sending request to Anthropic API...");
+        console.log(`[Anthropic Service] Sending request to Anthropic API using model ${modelId}...`);
         const response = await anthropic.messages.create({
-            model: "claude-opus-4-20250514", // Consider making model configurable
+            model: modelId, // Use the provided or default modelId
             max_tokens: 2048, // Consider making max_tokens configurable
             system: systemPrompt,
             messages: [

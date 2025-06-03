@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Scene Generator - Three.js</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            margin: 0; 
+            background-color: #1a1a1a; /* Dark background */
+            color: #e0e0e0; /* Light text */
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh; 
+        }
+        #controls-container { 
+            width: 100%; 
+            max-width: 800px; 
+            background: rgba(30, 30, 30, 0.85); /* Dark, semi-transparent background */
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+            -webkit-backdrop-filter: blur(10px); /* Safari support */
+            padding: 25px; 
+            border-radius: 12px; /* Slightly more rounded */
+            box-shadow: 0 8px 32px rgba(0,0,0,0.37); /* Softer, more modern shadow */
+            margin-top: 0; 
+            border: 1px solid rgba(255, 255, 255, 0.18); /* Subtle border */
+        }
+        h1 { 
+            text-align: center; 
+            color: #f5f5f5; /* Brighter white for heading */
+            margin-top: 25px; 
+            margin-bottom: 15px;
+            font-weight: 300; /* Lighter font weight for modern feel */
+        }
+        label { 
+            display: block; 
+            margin-bottom: 10px; /* Increased margin */
+            font-weight: 500; /* Medium font weight */
+            color: #c7c7c7; /* Lighter gray for labels */
+        }
+        input[type="text"] { 
+            width: calc(100% - 24px); 
+            padding: 12px; 
+            margin-bottom: 25px; 
+            background-color: rgba(0,0,0,0.3); /* Darker input background */
+            border: 1px solid rgba(255, 255, 255, 0.2); /* Lighter border */
+            border-radius: 6px; /* Softer corners */
+            color: #e0e0e0; /* Light text color */
+            font-size: 16px;
+        }
+        input[type="text"]::placeholder {
+            color: #888888; /* Placeholder text color */
+        }
+        button {
+            display: block; 
+            width: 100%; 
+            padding: 12px 18px; /* Slightly more padding */
+            background-color: #007aff; /* Modern blue */
+            color: white;
+            border: none; 
+            border-radius: 6px; /* Softer corners */
+            cursor: pointer; 
+            font-size: 17px; /* Slightly larger font */
+            font-weight: 500;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        button:hover { 
+            background-color: #0056b3; /* Darker blue on hover */
+            transform: translateY(-1px); /* Subtle lift effect */
+        }
+        button:disabled { 
+            background-color: #444444; /* Darker disabled state */
+            color: #888888;
+            cursor: not-allowed; 
+            transform: none;
+        }
+        /* Style for the new download button */
+        #downloadButton {
+            margin-top: 10px; /* Add some space above the download button */
+            background-color: #28a745; /* Green color for download */
+        }
+        #downloadButton:hover {
+            background-color: #218838; /* Darker green on hover */
+        }
+        #downloadButton:disabled {
+             background-color: #444444; /* Consistent disabled style */
+            color: #888888;
+        }
+        #viewer-container { 
+            width: 100%; 
+            max-width: 800px; 
+            height: 50vh; 
+            min-height: 400px; 
+            max-height: 600px; 
+            margin-top: 25px; 
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+            border-radius: 12px; /* Match controls container */
+            background-color: #2a2a2a; /* Dark background for viewer */
+            position: relative; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.37); /* Match controls container */
+        }
+        #threejs-canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            border-radius: 12px; /* Match parent */
+        } 
+        #status { 
+            margin-top: 20px; 
+            text-align: center; 
+            font-style: italic; 
+            color: #aaaaaa; /* Lighter status text */
+            min-height: 1.2em; /* Prevent layout shift */
+        }
+    </style>
+    <!-- Import Map for Three.js modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <h1>3D Scene Generator (Three.js)</h1>
+    <div id="viewer-container">
+        <canvas id="threejs-canvas"></canvas>
+    </div>
+    <div id="controls-container">
+        <div>
+            <label for="promptInput">Enter your prompt:</label>
+            <input type="text" id="promptInput" value="a vibrant red cube next to a small blue sphere">
+        </div>
+        <div>
+            <label for="modelSelect">Select Model:</label>
+            <select id="modelSelect" style="width: 100%; padding: 12px; margin-bottom: 20px; background-color: #000000; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; color: #FFFFFF; font-size: 16px;">
+                <option value="claude-opus-4-20250514">Claude Opus 4 (20250514)</option>
+                <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (20250514)</option>
+                <option value="claude-3-7-sonnet-20250219">Claude Sonnet 3.7 (20250219)</option>
+                <option value="claude-3-5-haiku-20241022">Claude Haiku 3.5 (20241022)</option>
+                <option value="claude-3-5-sonnet-20241022">Claude Sonnet 3.5 v2 (20241022)</option>
+                <option value="claude-3-5-sonnet-20240620" selected>Claude Sonnet 3.5 (20240620)</option>
+                <option value="claude-3-opus-20240229">Claude Opus 3 (20240229)</option>
+                <option value="claude-3-sonnet-20240229">Claude Sonnet 3 (20240229)</option>
+                <option value="claude-3-haiku-20240307">Claude Haiku 3 (20240307)</option>
+            </select>
+        </div>
+        <button id="generateButton">Generate Scene</button>
+        <button id="downloadButton">Download GLB</button>
+        <div id="status"></div>
+    </div>
+
+    <script type="module">
+        console.log('Main script started.');
+
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const promptInput = document.getElementById('promptInput');
+        const generateButton = document.getElementById('generateButton');
+        const statusDiv = document.getElementById('status');
+        const canvas = document.getElementById('threejs-canvas');
+        const viewerContainer = document.getElementById('viewer-container');
+        const downloadButton = document.getElementById('downloadButton');
+        const modelSelect = document.getElementById('modelSelect');
+
+        let scene, camera, renderer, controls, loader;
+        let currentModel = null;
+        let currentObjectUrl = null;
+        let lastSuccessfulPrompt = "scene"; // Default filename prefix
+
+        function initThree() {
+            console.log('initThree() called');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x2a2a2a); // Darker scene background to match viewer
+
+            // Adjust camera FOV and near/far planes for typical model viewing
+            camera = new THREE.PerspectiveCamera(50, viewerContainer.clientWidth / viewerContainer.clientHeight, 0.1, 1000);
+            camera.position.set(0, 1.5, 4); // Initial camera position
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(viewerContainer.clientWidth, viewerContainer.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            // Enable physically correct lighting
+            renderer.physicallyCorrectLights = true; 
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 0.5;
+            controls.maxDistance = 50;
+            controls.target.set(0, 1, 0); // Adjust target to be slightly above origin if models are typically floor-standing
+            controls.update();
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Softer ambient light
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5); // Stronger directional light
+            directionalLight.position.set(3, 10, 7);
+            directionalLight.castShadow = true; // Optional: for shadows
+            scene.add(directionalLight);
+            
+            // Optional: configure shadow properties for directionalLight
+            // directionalLight.shadow.mapSize.width = 1024;
+            // directionalLight.shadow.mapSize.height = 1024;
+            // directionalLight.shadow.camera.near = 0.5;
+            // directionalLight.shadow.camera.far = 50;
+
+
+            loader = new GLTFLoader();
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = viewerContainer.clientWidth / viewerContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(viewerContainer.clientWidth, viewerContainer.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function frameArea(object) {
+            const box = new THREE.Box3().setFromObject(object);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+
+            controls.reset(); // Reset controls to default state before adjustments
+
+            const maxSize = Math.max(size.x, size.y, size.z);
+            const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
+            const fitWidthDistance = fitHeightDistance / camera.aspect;
+            const distance = 1.2 * Math.max(fitHeightDistance, fitWidthDistance); // Add some padding
+
+            const direction = controls.object.position.clone().sub(center).normalize().multiplyScalar(distance);
+
+            controls.maxDistance = distance * 10;
+            controls.object.position.copy(center).add(direction);
+            controls.target.copy(center);
+            
+            controls.update();
+        }
+
+
+        function loadModel(url) {
+            if (currentModel) {
+                scene.remove(currentModel);
+                currentModel.traverse(child => { // Dispose of geometries and materials
+                    if (child.isMesh) {
+                        child.geometry.dispose();
+                        if (child.material.isMaterial) {
+                           cleanMaterial(child.material)
+                        } else {
+                            for (const material of child.material) cleanMaterial(material)
+                        }
+                    }
+                });
+                currentModel = null;
+            }
+
+            statusDiv.textContent = 'Loading model with Three.js...';
+            loader.load(url, (gltf) => {
+                currentModel = gltf.scene;
+                scene.add(currentModel);
+                frameArea(currentModel); // Frame the newly loaded model
+                statusDiv.textContent = 'Model loaded successfully with Three.js!';
+                statusDiv.style.color = 'green';
+                downloadButton.disabled = false; // Enable download button
+            }, undefined, (error) => {
+                console.error('An error happened during GLB loading:', error);
+                statusDiv.textContent = 'Failed to load GLB model with Three.js.';
+                statusDiv.style.color = 'red';
+                downloadButton.disabled = true; // Disable on error
+            });
+        }
+        
+        // Helper function to dispose of materials and their textures
+        function cleanMaterial(material) {
+            material.dispose();
+            for (const key of Object.keys(material)) {
+                const value = material[key];
+                if (value && typeof value === 'object' && 'isTexture' in value) {
+                    value.dispose();
+                }
+            }
+        }
+
+
+        generateButton.addEventListener('click', async () => {
+            console.log('Generate Scene button clicked.');
+
+            const prompt = promptInput.value.trim();
+            const selectedModelId = modelSelect.value;
+
+            if (!prompt) {
+                statusDiv.textContent = 'Please enter a prompt.';
+                statusDiv.style.color = 'red';
+                return;
+            }
+
+            generateButton.disabled = true;
+            generateButton.textContent = 'Generating...';
+            statusDiv.textContent = 'Sending prompt to API...';
+            statusDiv.style.color = 'inherit';
+
+            if (currentObjectUrl) {
+                URL.revokeObjectURL(currentObjectUrl);
+                currentObjectUrl = null;
+            }
+            
+            // Clear previous model visually immediately if desired, or wait for new one to load
+            if (currentModel) {
+                 scene.remove(currentModel);
+                 // Full cleanup will happen in loadModel
+            }
+            renderer.render(scene, camera); // Render the cleared scene
+
+            try {
+                console.log(`Attempting to fetch /generate-scene with prompt: "${prompt}", model: "${selectedModelId}"`);
+                const response = await fetch('/generate-scene', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: prompt, modelId: selectedModelId }),
+                });
+
+                statusDiv.textContent = 'Receiving model from API...';
+
+                if (!response.ok) {
+                    let errorMsg = `Error: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } catch (e) { /* If response is not JSON, use the status text */ }
+                    throw new Error(errorMsg);
+                }
+
+                const blob = await response.blob();
+                currentObjectUrl = URL.createObjectURL(blob);
+                loadModel(currentObjectUrl);
+                lastSuccessfulPrompt = prompt.replace(/[^a-z0-9_]/gi, '_').substring(0, 50) || "scene"; // Sanitize prompt for filename
+                downloadButton.disabled = false; // Enable download button
+
+            } catch (error) {
+                console.error('Error generating or loading scene:', error);
+                statusDiv.textContent = `Failed to load model: ${error.message}`;
+                statusDiv.style.color = 'red';
+                downloadButton.disabled = true; // Ensure it's disabled on error
+            } finally {
+                generateButton.disabled = false;
+                generateButton.textContent = 'Generate Scene';
+            }
+        });
+
+        downloadButton.addEventListener('click', () => {
+            if (currentObjectUrl) {
+                const a = document.createElement('a');
+                a.href = currentObjectUrl;
+                a.download = `${lastSuccessfulPrompt}.glb`; // Use sanitized prompt for filename
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                console.log('Download initiated for:', a.download);
+            } else {
+                console.warn('No model URL available for download.');
+                statusDiv.textContent = 'No model available to download.';
+                statusDiv.style.color = 'orange';
+            }
+        });
+
+        initThree(); // Initialize Three.js scene setup
+        console.log('Main script finished initial setup.');
+    </script>
+</body>
+</html> 

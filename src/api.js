@@ -20,7 +20,7 @@ console.log('[API DEBUG] ANTHROPIC_API_KEY after dotenv.config() in API:', proce
 import express from 'express';
 import fs from 'fs';
 import * as THREE from 'three';
-import { getScriptFromLLM } from './llm-utils.js';
+import { getScriptFromLLM, AVAILABLE_MODELS, DEFAULT_MODEL_ID } from './llm-utils.js';
 import { generateSceneFromScript, exportSceneToGLB } from './three-utils.js';
 import { initializeFileReaderShim } from './utils/fileReaderShim.js';
 
@@ -34,6 +34,9 @@ const __dirname = __dirnameES;
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, '../public')));
+
 app.use(express.json()); // Middleware to parse JSON bodies
 
 // Temporary directory for GLB files
@@ -43,16 +46,17 @@ if (!fs.existsSync(tempGlbDir)) {
 }
 
 app.post('/generate-scene', async (req, res) => {
-    const { prompt } = req.body;
+    const { prompt, modelId: requestedModelId } = req.body;
+    const modelId = AVAILABLE_MODELS.hasOwnProperty(requestedModelId) ? requestedModelId : DEFAULT_MODEL_ID;
 
     if (!prompt) {
         return res.status(400).send({ error: 'Prompt is required' });
     }
 
-    console.log(`API Request - User prompt: ${prompt}`);
+    console.log(`API Request - User prompt: ${prompt}, Model: ${modelId}`);
 
     try {
-        const llmResponse = await getScriptFromLLM(prompt);
+        const llmResponse = await getScriptFromLLM(prompt, modelId);
 
         // Generate a unique filename to avoid conflicts if multiple requests happen
         // And also to make it easier to clean up later if needed.
