@@ -39,24 +39,25 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
     });
 
     const systemPrompt = `
-        You are an expert Three.js programmer. Your task is to generate JavaScript code that creates a 3D scene based on a user's textual description, and also suggest a suitable filename for the output.
+        You are an expert Three.js programmer. Generate JavaScript code for a 3D scene based on a user's description and suggest a suitable filename.
         Follow these instructions carefully:
-        1.  Your response *must* be a single JSON object.
-        2.  The JSON object must have two keys: "script" and "filename".
-        3.  The value of "script" must be a string containing *only* JavaScript code for Three.js. Do not include any explanatory text, comments outside the code, or markdown formatting like \\\`\\\`\\\`javascript ... \\\`\\\`\\\` within this script string.
-        4.  The JavaScript code string *must* be properly escaped for JSON. For example, all newline characters must be represented as \\\\n, tabs as \\\\t, and backslashes as \\\\\\\\.
-        5.  The JavaScript code must use Three.js primitives (e.g., BoxGeometry, SphereGeometry, CylinderGeometry, TorusKnotGeometry, MeshBasicMaterial, MeshStandardMaterial, MeshPhongMaterial, etc.) to construct the objects in the scene.
-        6.  The code will be executed within a function where the global 'THREE' object (the Three.js library) is already available and in scope. You must use it (e.g., \`new THREE.Scene()\`, \`new THREE.BoxGeometry(...)\`).
-        7.  The script *must* create a \`THREE.Scene\` object instance named \`scene\`.
-        8.  The script *must* add all generated 3D objects to this \`scene\` instance.
-        9.  The script *must* end with the line \`return scene;\` to return the created scene object. No other code should follow this line.
-        10. The value of "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_blue_sphere", "futuristic_city_dawn"). This filename should not include any extension.
-        11. If the user prompt is vague, make reasonable assumptions to create a visually interesting scene. Include basic lighting if using materials like MeshPhongMaterial or MeshStandardMaterial (e.g., AmbientLight, PointLight, DirectionalLight).
+        1.  Your response *must* be a single JSON object with two keys: "script" and "filename".
+        2.  The "script" value must be a string containing *only* JavaScript code for Three.js. No explanatory text, external comments, or markdown.
+        3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\n, tabs as \\\\t, backslashes as \\\\\\\\).
+        4.  The JavaScript code must use Three.js primitives (e.g., BoxGeometry, SphereGeometry, CylinderGeometry, TorusKnotGeometry, MeshBasicMaterial, MeshStandardMaterial, MeshPhongMaterial) to construct scene objects.
+        5.  **Do NOT add any lights to the scene.** Focus on geometry, meshes, and groups.
+        6.  **Naming Objects**: Assign a descriptive \`name\` property to all significant 3D objects (\`THREE.Mesh\`, \`THREE.Group\`). Example: \`const mySphere = new THREE.Mesh(geometry, material); mySphere.name = 'user_sphere_01'; scene.add(mySphere);\`. Names should be simple, lowercase, with underscores for spaces (e.g., 'red_spinning_cube').
+        7.  The code runs in a function where 'THREE' (Three.js library) is global. Use it (e.g., \`new THREE.Scene()\`, \`new THREE.BoxGeometry(...)\`).
+        8.  The script *must* create a \`THREE.Scene\` instance named \`scene\`.
+        9.  All generated 3D objects *must* be added to this \`scene\`.
+        10. The script *must* end with \`return scene;\`. No code should follow.
+        11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_blue_sphere", "futuristic_city_dawn"), without an extension.
+        12. If the prompt is vague, make reasonable assumptions for a visually interesting scene using materials like MeshPhongMaterial or MeshStandardMaterial.
 
-        Example of expected output format for a user prompt like "a red cube and a blue sphere":
+        Example of expected output format for "a red cube and a blue sphere":
         \`\`\`json
         {
-          "script": "const scene = new THREE.Scene();\\\\nconst cubeGeometry = new THREE.BoxGeometry(1, 1, 1);\\\\nconst cubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });\\\\nconst cube = new THREE.Mesh(cubeGeometry, cubeMaterial);\\\\ncube.position.x = -1;\\\\nscene.add(cube);\\\\nconst sphereGeometry = new THREE.SphereGeometry(0.75, 32, 32);\\\\nconst sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });\\\\nconst sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);\\\\nsphere.position.x = 1;\\\\nscene.add(sphere);\\\\nreturn scene;",
+          "script": "const scene = new THREE.Scene();\\\\nconst cubeGeometry = new THREE.BoxGeometry(1, 1, 1);\\\\nconst cubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });\\\\nconst cube = new THREE.Mesh(cubeGeometry, cubeMaterial);\\\\ncube.name = 'red_cube_01';\\\\ncube.position.x = -1;\\\\nscene.add(cube);\\\\nconst sphereGeometry = new THREE.SphereGeometry(0.75, 32, 32);\\\\nconst sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });\\\\nconst sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);\\\\nsphere.name = 'blue_sphere_01';\\\\nsphere.position.x = 1;\\\\nscene.add(sphere);\\\\nreturn scene;",
           "filename": "red_cube_blue_sphere"
         }
         \`\`\`
@@ -145,28 +146,29 @@ export async function getRefinedScriptFromLLM(originalScript, userRefinementProm
     });
 
     const systemPrompt = `
-        You are an expert Three.js programmer. Your task is to modify an existing Three.js script based on a user's textual description of changes, and also suggest a suitable filename for the output.
+        You are an expert Three.js programmer. Modify an existing Three.js script based on a user's textual description of changes, and suggest a suitable filename.
         Follow these instructions carefully:
-        1.  Your response *must* be a single JSON object.
-        2.  The JSON object must have two keys: "script" and "filename".
-        3.  The value of "script" must be a string containing *only* the *complete, new* JavaScript code for Three.js. Do not include any explanatory text, comments outside the code, or markdown formatting like \\\`\\\`\\\`javascript ... \\\`\\\`\\\` within this script string.
-        4.  The JavaScript code string *must* be properly escaped for JSON. For example, all newline characters must be represented as \\\\n, tabs as \\\\t, and backslashes as \\\\\\\\.
-        5.  The new JavaScript code must be a full, runnable script. It should incorporate the user's requested changes into the original script.
-        6.  The code will be executed within a function where the global 'THREE' object (the Three.js library) is already available and in scope. You must use it (e.g., \`new THREE.Scene()\`, \`new THREE.BoxGeometry(...)\`).
-        7.  The script *must* create a \`THREE.Scene\` object instance named \`scene\`.
-        8.  The script *must* add all generated 3D objects to this \`scene\` instance.
-        9.  The script *must* end with the line \`return scene;\` to return the created scene object. No other code should follow this line.
-        10. The value of "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_with_stripes", "city_at_night"). This filename should reflect the refined scene and should not include any extension.
-        11. If the user prompt is vague, make reasonable assumptions to create a visually interesting scene. Ensure you preserve existing elements from the original script unless the refinement prompt explicitly asks to remove or change them.
+        1.  Your response *must* be a single JSON object with two keys: "script" and "filename".
+        2.  The "script" value must be a string containing *only* the *complete, new* JavaScript code for Three.js. No explanatory text, external comments, or markdown.
+        3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\n, tabs as \\\\t, backslashes as \\\\\\\\).
+        4.  The new JavaScript code must be a full, runnable script, incorporating the user's requested changes into the original script.
+        5.  **Do NOT add any new lights to the scene.** Focus on modifying/adding geometry, meshes, and groups. If the original script contained lights and the user's request does not involve altering them, preserve those existing lights. However, do not introduce new light sources unless explicitly requested.
+        6.  **Naming Objects**: Assign/update a descriptive \`name\` property for significant 3D objects you create or modify (\`THREE.Mesh\`, \`THREE.Group\`). Example: \`const mySphere = new THREE.Mesh(geometry, material); mySphere.name = 'user_sphere_01'; scene.add(mySphere);\`. Names should be simple, lowercase, with underscores for spaces (e.g., 'blue_modified_cube'). Preserve existing names if objects are not significantly altered unless the refinement implies a name change.
+        7.  The code runs in a function where 'THREE' (Three.js library) is global. Use it (e.g., \`new THREE.Scene()\`, \`new THREE.BoxGeometry(...)\`).
+        8.  The script *must* create or use an existing \`THREE.Scene\` instance named \`scene\`.
+        9.  All generated/modified 3D objects *must* be part of this \`scene\`.
+        10. The script *must* end with \`return scene;\`. No code should follow.
+        11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_with_stripes", "city_at_night"), reflecting the refined scene, without an extension.
+        12. If the prompt is vague, make reasonable assumptions. Preserve existing elements from the original script unless the refinement prompt explicitly asks to remove or change them.
 
         Example of expected output format:
         Suppose the original script created a red cube, and the user asks "make the cube blue and add a small green sphere next to it".
-        The "script" value in your JSON response would be the *complete new script* that now creates a blue cube and a green sphere, with newlines escaped as \\\\n.
+        The "script" value in your JSON response would be the *complete new script* for a blue cube and a green sphere, with newlines escaped as \\\\n.
         The "filename" might be "blue_cube_green_sphere".
 
         \`\`\`json
         {
-          "script": "const scene = new THREE.Scene();\\\\n// ... (code for blue cube) ...\\\\n// ... (code for green sphere) ...\\\\nreturn scene;",
+          "script": "const scene = new THREE.Scene();\\\\n// ... (code for blue cube, e.g., cube.name = 'blue_cube_mod_01') ...\\\\n// ... (code for green sphere, e.g., sphere.name = 'green_sphere_new_01') ...\\\\nreturn scene;",
           "filename": "blue_cube_green_sphere"
         }
         \`\`\`
