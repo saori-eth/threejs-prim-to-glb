@@ -41,9 +41,9 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
     const systemPrompt = `
         You are an expert Three.js programmer. Generate JavaScript code for a 3D scene based on a user's description and suggest a suitable filename.
         Follow these instructions carefully:
-        1.  Your response *must* be a single JSON object with two keys: "script" and "filename".
+        1.  Your response *must* be a single, raw JSON object with two keys: "script" and "filename". Do NOT wrap the JSON in markdown (e.g., \`\`\`json ... \`\`\`).
         2.  The "script" value must be a string containing *only* JavaScript code for Three.js. No explanatory text, external comments, or markdown.
-        3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\n, tabs as \\\\t, backslashes as \\\\\\\\).
+        3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\\\\\n, tabs as \\\\\\\\t, backslashes as \\\\\\\\\\\\\\\\).
         4.  The JavaScript code must use Three.js primitives (e.g., BoxGeometry, SphereGeometry, CylinderGeometry, TorusKnotGeometry, MeshBasicMaterial, MeshStandardMaterial, MeshPhongMaterial) to construct scene objects.
         5.  **Do NOT add any lights to the scene.** Focus on geometry, meshes, and groups.
         6.  **Naming Objects**: Assign a descriptive \`name\` property to all significant 3D objects (\`THREE.Mesh\`, \`THREE.Group\`). Example: \`const mySphere = new THREE.Mesh(geometry, material); mySphere.name = 'user_sphere_01'; scene.add(mySphere);\`. Names should be simple, lowercase, with underscores for spaces (e.g., 'red_spinning_cube').
@@ -55,12 +55,10 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
         12. If the prompt is vague, make reasonable assumptions for a visually interesting scene using materials like MeshPhongMaterial or MeshStandardMaterial.
 
         Example of expected output format for "a red cube and a blue sphere":
-        \`\`\`json
         {
-          "script": "const scene = new THREE.Scene();\\\\nconst cubeGeometry = new THREE.BoxGeometry(1, 1, 1);\\\\nconst cubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });\\\\nconst cube = new THREE.Mesh(cubeGeometry, cubeMaterial);\\\\ncube.name = 'red_cube_01';\\\\ncube.position.x = -1;\\\\nscene.add(cube);\\\\nconst sphereGeometry = new THREE.SphereGeometry(0.75, 32, 32);\\\\nconst sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });\\\\nconst sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);\\\\nsphere.name = 'blue_sphere_01';\\\\nsphere.position.x = 1;\\\\nscene.add(sphere);\\\\nreturn scene;",
+          "script": "const scene = new THREE.Scene();\\\\\\\\nconst cubeGeometry = new THREE.BoxGeometry(1, 1, 1);\\\\\\\\nconst cubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });\\\\\\\\nconst cube = new THREE.Mesh(cubeGeometry, cubeMaterial);\\\\\\\\ncube.name = \'red_cube_01\';\\\\\\\\ncube.position.x = -1;\\\\\\\\nscene.add(cube);\\\\\\\\nconst sphereGeometry = new THREE.SphereGeometry(0.75, 32, 32);\\\\\\\\nconst sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });\\\\\\\\nconst sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);\\\\\\\\nsphere.name = \'blue_sphere_01\';\\\\\\\\nsphere.position.x = 1;\\\\\\\\nscene.add(sphere);\\\\\\\\nreturn scene;",
           "filename": "red_cube_blue_sphere"
         }
-        \`\`\`
         Now, generate the JSON response for the following user prompt.
     `;
 
@@ -68,7 +66,7 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
         console.log(`[Anthropic Service] Sending request to Anthropic API using model ${modelId}...`);
         const response = await anthropic.messages.create({
             model: modelId, // Use the provided or default modelId
-            max_tokens: 2048, // Consider making max_tokens configurable
+            max_tokens: 4096, // Consider making max_tokens configurable
             system: systemPrompt,
             messages: [
                 { role: "user", content: userPrompt }
@@ -86,7 +84,7 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
         }
         
         // Attempt to find JSON block if markdown is present
-        const jsonMatch = rawResponseText.match(/```json\n([\s\S]*?)\n```/);
+        const jsonMatch = rawResponseText.match(/```json\\s*([\\s\\S]*?)\\s*```/);
         let jsonResponseString;
         if (jsonMatch && jsonMatch[1]) {
             jsonResponseString = jsonMatch[1];
@@ -148,9 +146,9 @@ export async function getRefinedScriptFromLLM(originalScript, userRefinementProm
     const systemPrompt = `
         You are an expert Three.js programmer. Modify an existing Three.js script based on a user's textual description of changes, and suggest a suitable filename.
         Follow these instructions carefully:
-        1.  Your response *must* be a single JSON object with two keys: "script" and "filename".
+        1.  Your response *must* be a single, raw JSON object with two keys: "script" and "filename". Do NOT wrap the JSON in markdown (e.g., \`\`\`json ... \`\`\`).
         2.  The "script" value must be a string containing *only* the *complete, new* JavaScript code for Three.js. No explanatory text, external comments, or markdown.
-        3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\n, tabs as \\\\t, backslashes as \\\\\\\\).
+        3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\\\\\n, tabs as \\\\\\\\t, backslashes as \\\\\\\\\\\\\\\\).
         4.  The new JavaScript code must be a full, runnable script, incorporating the user's requested changes into the original script.
         5.  **Do NOT add any new lights to the scene.** Focus on modifying/adding geometry, meshes, and groups. If the original script contained lights and the user's request does not involve altering them, preserve those existing lights. However, do not introduce new light sources unless explicitly requested.
         6.  **Naming Objects**: Assign/update a descriptive \`name\` property for significant 3D objects you create or modify (\`THREE.Mesh\`, \`THREE.Group\`). Example: \`const mySphere = new THREE.Mesh(geometry, material); mySphere.name = 'user_sphere_01'; scene.add(mySphere);\`. Names should be simple, lowercase, with underscores for spaces (e.g., 'blue_modified_cube'). Preserve existing names if objects are not significantly altered unless the refinement implies a name change.
@@ -163,15 +161,13 @@ export async function getRefinedScriptFromLLM(originalScript, userRefinementProm
 
         Example of expected output format:
         Suppose the original script created a red cube, and the user asks "make the cube blue and add a small green sphere next to it".
-        The "script" value in your JSON response would be the *complete new script* for a blue cube and a green sphere, with newlines escaped as \\\\n.
+        The "script" value in your JSON response would be the *complete new script* for a blue cube and a green sphere, with newlines escaped as \\\\\\\\n.
         The "filename" might be "blue_cube_green_sphere".
 
-        \`\`\`json
         {
-          "script": "const scene = new THREE.Scene();\\\\n// ... (code for blue cube, e.g., cube.name = 'blue_cube_mod_01') ...\\\\n// ... (code for green sphere, e.g., sphere.name = 'green_sphere_new_01') ...\\\\nreturn scene;",
+          "script": "const scene = new THREE.Scene();\\\\\\\\n// ... (code for blue cube, e.g., cube.name = \'blue_cube_mod_01\') ...\\\\\\\\n// ... (code for green sphere, e.g., sphere.name = \'green_sphere_new_01\') ...\\\\\\\\nreturn scene;",
           "filename": "blue_cube_green_sphere"
         }
-        \`\`\`
         Now, generate the JSON response for the following original script and user refinement request.
     `;
 
@@ -199,7 +195,7 @@ export async function getRefinedScriptFromLLM(originalScript, userRefinementProm
             throw new Error("Anthropic API did not return the expected text content for refinement.");
         }
         
-        const jsonMatch = rawResponseText.match(/```json\n([\\s\\S]*?)\\n```/);
+        const jsonMatch = rawResponseText.match(/```json\\s*([\\s\\S]*?)\\s*```/);
         let jsonResponseString;
         if (jsonMatch && jsonMatch[1]) {
             jsonResponseString = jsonMatch[1];
