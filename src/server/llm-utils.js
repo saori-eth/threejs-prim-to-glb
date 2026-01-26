@@ -66,6 +66,7 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
         11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_blue_sphere", "robot_arm"), without an extension.
         12. If the prompt is vague, make reasonable assumptions for a visually interesting object using materials like MeshPhongMaterial or MeshStandardMaterial.
         13. Position objects so they sit on or slightly above y=0 (the grid floor level).
+        14. **Scale reference**: 1 unit = 1 meter. A human is approximately 1.7 units tall. Scale all objects realistically relative to this (e.g., a car ~4.5 units long, a cat ~0.25 units tall, a house ~8 units tall).
 
         Example of expected output format for "a red cube and a blue sphere":
         {
@@ -106,7 +107,7 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
     }
 
     // Attempt to find JSON block if markdown is present
-    const jsonMatch = rawResponseText.match(/```json\\s*([\\s\\S]*?)\\s*```/);
+    const jsonMatch = rawResponseText.match(/```json\s*([\s\S]*?)\s*```/);
     let jsonResponseString;
     if (jsonMatch && jsonMatch[1]) {
       jsonResponseString = jsonMatch[1];
@@ -226,6 +227,7 @@ export async function getRefinedScriptFromLLM(
         11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_with_stripes", "robot_arm_extended"), reflecting the refined scene, without an extension.
         12. If the prompt is vague, make reasonable assumptions. Preserve existing elements from the original script unless the refinement prompt explicitly asks to remove or change them.
         13. Keep objects positioned so they sit on or slightly above y=0 (the grid floor level).
+        14. **Scale reference**: 1 unit = 1 meter. A human is approximately 1.7 units tall. Scale all objects realistically relative to this.
 
         Example of expected output format:
         Suppose the original script created a red cube, and the user asks "make the cube blue and add a small green sphere next to it".
@@ -274,7 +276,7 @@ export async function getRefinedScriptFromLLM(
       );
     }
 
-    const jsonMatch = rawResponseText.match(/```json\\s*([\\s\\S]*?)\\s*```/);
+    const jsonMatch = rawResponseText.match(/```json\s*([\s\S]*?)\s*```/);
     let jsonResponseString;
     if (jsonMatch && jsonMatch[1]) {
       jsonResponseString = jsonMatch[1];
