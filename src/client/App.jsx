@@ -1,31 +1,26 @@
 import { useState, useRef, useCallback } from 'react';
 import ThreeViewer from './components/ThreeViewer.jsx';
-import GenerateControls from './components/GenerateControls.jsx';
-import RefineControls from './components/RefineControls.jsx';
+import Sidebar from './components/Sidebar.jsx';
+import PromptModal from './components/PromptModal.jsx';
 
 export default function App() {
   const [modelId, setModelId] = useState('claude-opus-4-5-20251101');
   const [status, setStatus] = useState({ text: '', type: '' });
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isRefining, setIsRefining] = useState(false);
-  const [canDownload, setCanDownload] = useState(false);
-  const [canRefine, setCanRefine] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [generations, setGenerations] = useState([]);
+  const [currentGenId, setCurrentGenId] = useState(null);
+  const [mode, setMode] = useState('new');
 
   const viewerRef = useRef(null);
-  const currentObjectUrlRef = useRef(null);
-  const currentScriptRef = useRef(null);
-  const currentFilenameRef = useRef('scene');
+
+  const currentGen = generations.find((g) => g.id === currentGenId);
 
   const handleLoadSuccess = useCallback(() => {
-    setStatus({ text: 'Model loaded successfully!', type: 'success' });
-    setCanDownload(true);
-    setCanRefine(!!currentScriptRef.current);
+    setStatus({ text: 'Model loaded!', type: 'success' });
   }, []);
 
   const handleLoadError = useCallback(() => {
-    setStatus({ text: 'Failed to load GLB model.', type: 'error' });
-    setCanDownload(false);
-    setCanRefine(false);
+    setStatus({ text: 'Failed to load model.', type: 'error' });
   }, []);
 
   const handleGenerate = async (prompt) => {
@@ -34,13 +29,8 @@ export default function App() {
       return;
     }
 
-    setIsGenerating(true);
-    setStatus({ text: 'Sending prompt to API...', type: '' });
-
-    if (currentObjectUrlRef.current) {
-      URL.revokeObjectURL(currentObjectUrlRef.current);
-      currentObjectUrlRef.current = null;
-    }
+    setIsLoading(true);
+    setStatus({ text: 'Generating...', type: '' });
 
     viewerRef.current?.clearModel();
 
@@ -51,10 +41,8 @@ export default function App() {
         body: JSON.stringify({ prompt, modelId }),
       });
 
-      setStatus({ text: 'Receiving model from API...', type: '' });
-
       if (!response.ok) {
-        let errorMsg = `Error: ${response.status} ${response.statusText}`;
+        let errorMsg = `Error: ${response.status}`;
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
@@ -64,31 +52,39 @@ export default function App() {
 
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
-      currentObjectUrlRef.current = objectUrl;
 
       const scriptHeader = response.headers.get('X-Generated-Script');
       const filenameHeader = response.headers.get('X-Generated-Filename');
 
-      currentScriptRef.current = scriptHeader ? decodeURIComponent(scriptHeader) : null;
-      currentFilenameRef.current = filenameHeader
+      const script = scriptHeader ? decodeURIComponent(scriptHeader) : null;
+      const filename = filenameHeader
         ? decodeURIComponent(filenameHeader)
-        : prompt.replace(/[^a-z0-9_]/gi, '_').substring(0, 50) || 'scene';
+        : prompt.replace(/[^a-z0-9_]/gi, '_').substring(0, 30) || 'scene';
 
+      const newGen = {
+        id: Date.now().toString(),
+        prompt,
+        script,
+        filename,
+        objectUrl,
+      };
+
+      setGenerations((prev) => [newGen, ...prev]);
+      setCurrentGenId(newGen.id);
+      setMode('edit');
       setStatus({ text: 'Loading model...', type: '' });
       viewerRef.current?.loadModel(objectUrl);
     } catch (error) {
       console.error('Error generating scene:', error);
-      setStatus({ text: `Failed to load model: ${error.message}`, type: 'error' });
-      setCanDownload(false);
-      setCanRefine(false);
+      setStatus({ text: error.message, type: 'error' });
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
   const handleRefine = async (refinementPrompt) => {
-    if (!currentScriptRef.current) {
-      setStatus({ text: 'No scene script available to refine.', type: 'error' });
+    if (!currentGen?.script) {
+      setStatus({ text: 'No scene to refine.', type: 'error' });
       return;
     }
 
@@ -97,13 +93,8 @@ export default function App() {
       return;
     }
 
-    setIsRefining(true);
-    setStatus({ text: 'Sending refinement request to API...', type: '' });
-
-    if (currentObjectUrlRef.current) {
-      URL.revokeObjectURL(currentObjectUrlRef.current);
-      currentObjectUrlRef.current = null;
-    }
+    setIsLoading(true);
+    setStatus({ text: 'Refining...', type: '' });
 
     viewerRef.current?.clearModel();
 
@@ -112,16 +103,14 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          originalScript: currentScriptRef.current,
+          originalScript: currentGen.script,
           refinementPrompt,
           modelId,
         }),
       });
 
-      setStatus({ text: 'Receiving refined model from API...', type: '' });
-
       if (!response.ok) {
-        let errorMsg = `Error: ${response.status} ${response.statusText}`;
+        let errorMsg = `Error: ${response.status}`;
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
@@ -132,62 +121,90 @@ export default function App() {
       const scriptHeader = response.headers.get('X-Generated-Script');
       const filenameHeader = response.headers.get('X-Generated-Filename');
 
-      currentScriptRef.current = scriptHeader ? decodeURIComponent(scriptHeader) : null;
-      currentFilenameRef.current = filenameHeader
+      const script = scriptHeader ? decodeURIComponent(scriptHeader) : null;
+      const filename = filenameHeader
         ? decodeURIComponent(filenameHeader)
-        : (refinementPrompt.substring(0, 20) + '_refined').replace(/[^a-z0-9_]/gi, '_') || 'scene_refined';
+        : currentGen.filename + '_v2';
 
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
-      currentObjectUrlRef.current = objectUrl;
+
+      if (currentGen.objectUrl) {
+        URL.revokeObjectURL(currentGen.objectUrl);
+      }
+
+      setGenerations((prev) =>
+        prev.map((g) =>
+          g.id === currentGenId
+            ? { ...g, script, filename, objectUrl, prompt: `${g.prompt} > ${refinementPrompt}` }
+            : g
+        )
+      );
 
       setStatus({ text: 'Loading refined model...', type: '' });
       viewerRef.current?.loadModel(objectUrl);
     } catch (error) {
       console.error('Error refining scene:', error);
-      setStatus({ text: `Failed to refine model: ${error.message}`, type: 'error' });
-      setCanDownload(false);
-      setCanRefine(false);
+      setStatus({ text: error.message, type: 'error' });
     } finally {
-      setIsRefining(false);
+      setIsLoading(false);
     }
   };
 
   const handleDownload = () => {
-    if (currentObjectUrlRef.current) {
+    if (currentGen?.objectUrl) {
       const a = document.createElement('a');
-      a.href = currentObjectUrlRef.current;
-      a.download = `${currentFilenameRef.current}.glb`;
+      a.href = currentGen.objectUrl;
+      a.download = `${currentGen.filename}.glb`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     }
   };
 
+  const handleSelectGeneration = (id) => {
+    const gen = generations.find((g) => g.id === id);
+    if (gen) {
+      setCurrentGenId(id);
+      setMode('edit');
+      setStatus({ text: '', type: '' });
+      viewerRef.current?.loadModel(gen.objectUrl);
+    }
+  };
+
+  const handleNewGeneration = () => {
+    setCurrentGenId(null);
+    setMode('new');
+    setStatus({ text: '', type: '' });
+    viewerRef.current?.clearModel();
+  };
+
   return (
     <>
-      <h1>Three.js GLB Generator</h1>
-
       <ThreeViewer
         ref={viewerRef}
         onLoadSuccess={handleLoadSuccess}
         onLoadError={handleLoadError}
       />
 
-      <GenerateControls
+      <Sidebar
+        generations={generations}
+        currentId={currentGenId}
+        onSelect={handleSelectGeneration}
+        onNew={handleNewGeneration}
+      />
+
+      <PromptModal
+        mode={mode}
+        initialPrompt=""
         onGenerate={handleGenerate}
+        onRefine={handleRefine}
         onDownload={handleDownload}
-        canDownload={canDownload}
-        isLoading={isGenerating || isRefining}
+        canDownload={!!currentGen?.objectUrl}
+        isLoading={isLoading}
         status={status}
         modelId={modelId}
         onModelChange={setModelId}
-      />
-
-      <RefineControls
-        onRefine={handleRefine}
-        canRefine={canRefine}
-        isLoading={isGenerating || isRefining}
       />
     </>
   );

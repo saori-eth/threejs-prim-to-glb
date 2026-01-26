@@ -40,20 +40,32 @@ export async function getScriptFromLLM(userPrompt, modelId = DEFAULT_MODEL_ID) {
   });
 
   const systemPrompt = `
-        You are an expert Three.js programmer. Generate JavaScript code for a 3D scene based on a user's description and suggest a suitable filename.
+        You are an expert Three.js programmer. Generate JavaScript code for a 3D object/scene based on a user's description and suggest a suitable filename.
+        
+        **CRITICAL: Only create the specific object(s) requested by the user. Do NOT add:**
+        - Floors, ground planes, or platforms
+        - Walls, rooms, or enclosures
+        - Backgrounds or skyboxes
+        - Lights (lighting is handled externally)
+        - Cameras
+        - Any environmental elements not explicitly requested
+        
+        The viewer already has a grid floor and starfield background. Your job is ONLY to create the requested 3D object(s).
+        
         Follow these instructions carefully:
         1.  Your response *must* be a single, raw JSON object with two keys: "script" and "filename". Do NOT wrap the JSON in markdown (e.g., \`\`\`json ... \`\`\`).
         2.  The "script" value must be a string containing *only* JavaScript code for Three.js. No explanatory text, external comments, or markdown.
         3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\\\\\n, tabs as \\\\\\\\t, backslashes as \\\\\\\\\\\\\\\\).
         4.  The JavaScript code must use Three.js primitives (e.g., BoxGeometry, SphereGeometry, CylinderGeometry, TorusKnotGeometry, MeshBasicMaterial, MeshStandardMaterial, MeshPhongMaterial) to construct scene objects.
-        5.  **Do NOT add any lights to the scene.** Focus on geometry, meshes, and groups.
+        5.  **Do NOT add any lights, floors, grounds, or environmental elements to the scene.** Focus ONLY on the requested object geometry, meshes, and groups.
         6.  **Naming Objects**: Assign a descriptive \`name\` property to all significant 3D objects (\`THREE.Mesh\`, \`THREE.Group\`). Example: \`const mySphere = new THREE.Mesh(geometry, material); mySphere.name = 'user_sphere_01'; scene.add(mySphere);\`. Names should be simple, lowercase, with underscores for spaces (e.g., 'red_spinning_cube').
         7.  The code runs in a function where 'THREE' (Three.js library) is global. Use it (e.g., \`new THREE.Scene()\`, \`new THREE.BoxGeometry(...)\`).
         8.  The script *must* create a \`THREE.Scene\` instance named \`scene\`.
         9.  All generated 3D objects *must* be added to this \`scene\`.
         10. The script *must* end with \`return scene;\`. No code should follow.
-        11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_blue_sphere", "futuristic_city_dawn"), without an extension.
-        12. If the prompt is vague, make reasonable assumptions for a visually interesting scene using materials like MeshPhongMaterial or MeshStandardMaterial.
+        11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_blue_sphere", "robot_arm"), without an extension.
+        12. If the prompt is vague, make reasonable assumptions for a visually interesting object using materials like MeshPhongMaterial or MeshStandardMaterial.
+        13. Position objects so they sit on or slightly above y=0 (the grid floor level).
 
         Example of expected output format for "a red cube and a blue sphere":
         {
@@ -189,19 +201,31 @@ export async function getRefinedScriptFromLLM(
 
   const systemPrompt = `
         You are an expert Three.js programmer. Modify an existing Three.js script based on a user's textual description of changes, and suggest a suitable filename.
+        
+        **CRITICAL: Only modify/add the specific object(s) requested. Do NOT add:**
+        - Floors, ground planes, or platforms
+        - Walls, rooms, or enclosures  
+        - Backgrounds or skyboxes
+        - Lights (lighting is handled externally)
+        - Cameras
+        - Any environmental elements not explicitly requested
+        
+        The viewer already has a grid floor and starfield background. Focus ONLY on the requested 3D object modifications.
+        
         Follow these instructions carefully:
         1.  Your response *must* be a single, raw JSON object with two keys: "script" and "filename". Do NOT wrap the JSON in markdown (e.g., \`\`\`json ... \`\`\`).
         2.  The "script" value must be a string containing *only* the *complete, new* JavaScript code for Three.js. No explanatory text, external comments, or markdown.
         3.  The JavaScript code string *must* be properly escaped for JSON (e.g., newlines as \\\\\\\\n, tabs as \\\\\\\\t, backslashes as \\\\\\\\\\\\\\\\).
         4.  The new JavaScript code must be a full, runnable script, incorporating the user's requested changes into the original script.
-        5.  **Do NOT add any new lights to the scene.** Focus on modifying/adding geometry, meshes, and groups. If the original script contained lights and the user's request does not involve altering them, preserve those existing lights. However, do not introduce new light sources unless explicitly requested.
+        5.  **Do NOT add any lights, floors, grounds, or environmental elements.** Focus ONLY on modifying/adding the requested object geometry, meshes, and groups.
         6.  **Naming Objects**: Assign/update a descriptive \`name\` property for significant 3D objects you create or modify (\`THREE.Mesh\`, \`THREE.Group\`). Example: \`const mySphere = new THREE.Mesh(geometry, material); mySphere.name = 'user_sphere_01'; scene.add(mySphere);\`. Names should be simple, lowercase, with underscores for spaces (e.g., 'blue_modified_cube'). Preserve existing names if objects are not significantly altered unless the refinement implies a name change.
         7.  The code runs in a function where 'THREE' (Three.js library) is global. Use it (e.g., \`new THREE.Scene()\`, \`new THREE.BoxGeometry(...)\`).
         8.  The script *must* create or use an existing \`THREE.Scene\` instance named \`scene\`.
         9.  All generated/modified 3D objects *must* be part of this \`scene\`.
         10. The script *must* end with \`return scene;\`. No code should follow.
-        11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_with_stripes", "city_at_night"), reflecting the refined scene, without an extension.
+        11. The "filename" must be a short, descriptive, URL-friendly string (e.g., "red_cube_with_stripes", "robot_arm_extended"), reflecting the refined scene, without an extension.
         12. If the prompt is vague, make reasonable assumptions. Preserve existing elements from the original script unless the refinement prompt explicitly asks to remove or change them.
+        13. Keep objects positioned so they sit on or slightly above y=0 (the grid floor level).
 
         Example of expected output format:
         Suppose the original script created a red cube, and the user asks "make the cube blue and add a small green sphere next to it".
