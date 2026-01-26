@@ -142,4 +142,6 @@ $RECYCLE.BIN/
 
 # Environment variables specific to the CLI
 # Ignore the actual .env file in the cli directory
-cli/.env 
+cli/.env
+
+node_modules/

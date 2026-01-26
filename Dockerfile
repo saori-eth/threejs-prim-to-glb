@@ -1,28 +1,19 @@
-# Use an official Node.js runtime as a parent image
-# We use the version specified in package.json engines field (>=18.0.0), so Node 18 is a safe bet.
-# Alpine Linux is used for a smaller image size.
-FROM node:18-alpine
+FROM node:20-slim
 
-# Set the working directory in the container
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy package.json and package-lock.json (if available)
-# Doing this separately leverages Docker's build cache
-COPY package*.json ./
+COPY package.json ./
+COPY src/client/package.json ./src/client/
+COPY src/server/package.json ./src/server/
 
-# Install app dependencies
-# Using --production flag to install only dependencies, not devDependencies
-# Using --omit=dev is the modern equivalent for npm v7+
-RUN npm install --omit=dev
+RUN npm install
 
-# Bundle app source
 COPY . .
 
-# The API in src/api.js listens on process.env.PORT || 3000.
-# Fly.io will set the PORT environment variable.
-# We can expose it here for documentation, though Fly.io handles mapping.
-EXPOSE 3000
+RUN npm run build
 
-# Define the command to run the app
-# This uses the "api" script from your package.json
-CMD [ "npm", "run", "api" ] 
+WORKDIR /app/src/server
+
+EXPOSE 8080
+
+CMD ["node", "api.js"]
