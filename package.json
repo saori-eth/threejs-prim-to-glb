@@ -1,34 +1,21 @@
 {
-  "name": "llm-3d-models-project",
-  "version": "0.1.0",
-  "description": "Generates 3D models from text prompts using LLMs and Three.js.",
-  "main": "src/index.js",
+  "name": "three-js-prim-to-glb",
+  "version": "1.0.0",
+  "private": true,
   "type": "module",
-  "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "api": "node src/api.js"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.1",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "helmet": "^8.1.0",
-    "inquirer": "^9.2.12",
-    "three": "^0.160.0",
-    "yargs": "^17.7.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "llm",
-    "three.js",
-    "3d",
-    "glb",
-    "procedural generation",
-    "ai"
+  "workspaces": [
+    "src/client",
+    "src/server"
   ],
-  "author": "",
-  "license": "ISC"
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "npm run dev -w src/client",
+    "dev:server": "npm run dev -w src/server",
+    "build": "npm run build -w src/client",
+    "start": "npm run start -w src/server",
+    "lint": "echo 'No lint configured'"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
 }
